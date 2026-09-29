@@ -8,7 +8,7 @@ struct FileSignature
 {
     std::vector<unsigned char> magicBytes;
     std::string fileType;
-    std::string extension;
+    std::vector<std::string> extensions;
 };
 
 #endif

@@ -17,6 +17,10 @@ private:
     std::vector<FileSignature> signatures;
 
     std::vector<unsigned char> readHeader(const std::string& filename);
+
+    std::string getExtension(const std::string& filename);
+    bool ExtensionMatches(const std::string& filename, 
+        const FileSignature& signature);
 };
 
 #endif
