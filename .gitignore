@@ -1,3 +1,5 @@
-build/
 *.o
-*.out
+nexus-fileid
+build/
+.vscode/
+.idea/
