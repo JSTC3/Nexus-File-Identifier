@@ -25,4 +25,7 @@ fclean: clean
 
 re: fclean all
 
-.PHONY: all clean fclean re
+test: $(NAME)
+	sh tests/test_scan.sh
+
+.PHONY: all clean fclean re test
