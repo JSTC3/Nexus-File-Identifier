@@ -1,5 +1,8 @@
 #include "FileIdentifier.hpp"
 
+#include <algorithm>
+#include <cctype>
+#include <filesystem>
 #include <fstream>
 
 FileIdentifier::FileIdentifier()
@@ -8,32 +11,32 @@ FileIdentifier::FileIdentifier()
         {
             {0xFF, 0xD8, 0xFF},
             "JPEG image",
-            ".jpg/.jpeg"
+            {".jpg", ".jpeg"}
         },
         {
             {0x89, 0x50, 0x4E, 0x47},
             "PNG image",
-            ".png"
+            {".png"}
         },
         {
             {0x25, 0x50, 0x44, 0x46},
             "PDF document",
-            ".pdf"
+            {".pdf"}
         },
         {
             {0x50, 0x4B, 0x03, 0x04},
             "ZIP archive",
-            ".zip"
+            {".zip"}
         },
         {
             {0x4D, 0x5A},
             "Windows PE executable",
-            ".exe"
+            {".exe"}
         },
         {
             {0x7F, 0x45, 0x4C, 0x46},
             "ELF executable",
-            ""
+            {}
         }
     };
 }
@@ -58,12 +61,18 @@ std::vector<unsigned char> FileIdentifier::readHeader(
     return header;
 }
 
-std::string FileIdentifier::identify(const std::string& filename)
+FileReport FileIdentifier::analyze(const std::string& filename)
 {
+    std::string extension = std::filesystem::path(filename).extension().string();
+    std::transform(extension.begin(), extension.end(), extension.begin(),
+        [](unsigned char character) {
+            return static_cast<char>(std::tolower(character));
+        });
+
     std::vector<unsigned char> header = readHeader(filename);
 
     if (header.empty())
-        return "Unable to read file";
+        return {filename, extension, "Unable to read file", false, false};
 
     for (const FileSignature& signature : signatures)
     {
@@ -82,8 +91,14 @@ std::string FileIdentifier::identify(const std::string& filename)
         }
 
         if (match)
-            return signature.fileType;
+        {
+            bool extensionMatches = signature.extensions.empty() ||
+                std::find(signature.extensions.begin(), signature.extensions.end(),
+                    extension) != signature.extensions.end();
+            return {filename, extension, signature.fileType,
+                extensionMatches, true};
+        }
     }
 
-    return "Unknown file type";
+    return {filename, extension, "Unknown file type", false, false};
 }

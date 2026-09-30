@@ -1,6 +1,7 @@
 #ifndef FILE_IDENTIFIER_HPP
 #define FILE_IDENTIFIER_HPP
 
+#include "FileReport.hpp"
 #include "FileSignature.hpp"
 
 #include <string>
@@ -11,16 +12,13 @@ class FileIdentifier
 public:
     FileIdentifier();
 
-    std::string identify(const std::string& filename);
+    FileReport analyze(const std::string& filename);
 
 private:
     std::vector<FileSignature> signatures;
 
     std::vector<unsigned char> readHeader(const std::string& filename);
 
-    std::string getExtension(const std::string& filename);
-    bool ExtensionMatches(const std::string& filename, 
-        const FileSignature& signature);
 };
 
 #endif

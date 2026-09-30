@@ -4,7 +4,8 @@ CXXFLAGS = -std=c++17 -Wall -Wextra -Iinclude
 NAME = nexus-fileid
 
 SRC = src/main.cpp \
-      src/FileID.cpp
+	src/FileID.cpp \
+	src/FileReport.cpp
 
 OBJ = $(SRC:.cpp=.o)
 
