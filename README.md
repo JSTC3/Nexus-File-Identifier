@@ -37,8 +37,8 @@ A small **C++17 command-line tool** that identifies files by their leading magic
 |---|---|
 | 🎯 **Detects** | File type from the leading magic bytes |
 | 🚩 **Flags** | Extension mismatches (`suspicious.jpeg` that isn't what it claims) |
-| 🗂️ **Configurable** | Plain-text signature database, one rule per line |
-| 🧪 **Tested** | Small temporary byte fixtures, no executable samples in the repo |
+| 📁 **Scans** | A file or all regular files under a directory, recursively |
+| 🧪 **Tested** | Temporary byte fixtures, no executable samples in the repo |
 
 ## 🔄 How it works
 
@@ -61,20 +61,20 @@ flowchart LR
 make
 ```
 
-The executable is written to `build/nexus-fileid`.
+The executable is written to the repository root as `nexus-fileid`.
 
 ## ▶️ Usage
 
-Run from the repository root to use the included signature database:
+Analyze one file:
 
 ```sh
-./build/nexus-fileid suspicious.jpeg
+./nexus-fileid suspicious.jpeg
 ```
 
-Or provide a database path explicitly:
+Scan a directory recursively:
 
 ```sh
-./build/nexus-fileid suspicious.jpeg signatures/signatures.txt
+./nexus-fileid Downloads/
 ```
 
 <details open>
@@ -82,45 +82,95 @@ Or provide a database path explicitly:
 
 <br>
 
+Clean file — one line:
+
 ```text
-File: suspicious.jpeg
-Detected type: JPEG
-Expected extension: .jpg
-Extension mismatch: yes
-Actual extension: .jpeg
+[OK] photo.jpg  (JPEG image)
+```
+
+Unknown format:
+
+```text
+[?] notes.bin
+    Type    : Unknown file type
+```
+
+Extension mismatch — full warning banner:
+
+```text
+========================================
+       NEXUS FILE IDENTIFIER
+========================================
+
+File          : suspicious.jpeg
+Extension     : .jpeg
+Detected Type : Windows PE executable
+Expected Ext  : .exe
+
+[!] WARNING: Extension mismatch
+[!] File content does not match extension
+```
+
+Directory scan summary:
+
+```text
+Scanning: Downloads/
+
+[OK] photo.jpg  (JPEG image)
+
+[?] notes.bin
+    Type    : Unknown file type
+
+========================================
+       NEXUS FILE IDENTIFIER
+========================================
+
+File          : suspicious.jpeg
+Extension     : .jpeg
+Detected Type : Windows PE executable
+Expected Ext  : .exe
+
+[!] WARNING: Extension mismatch
+[!] File content does not match extension
+
+--------------------------------
+Files scanned: 3
+Mismatches:    1
+Unknown:       1
+--------------------------------
 ```
 
 </details>
 
-## 🗂️ Signature database
+## 🗂️ Built-in signatures
 
-One rule per line, in this format:
+| Format | Magic bytes | Valid extensions |
+|---|---|---|
+| JPEG image | `FF D8 FF` | `.jpg` `.jpeg` |
+| PNG image | `89 50 4E 47 0D 0A 1A 0A` | `.png` |
+| GIF image | `47 49 46 38` | `.gif` |
+| BMP image | `42 4D` | `.bmp` |
+| TIFF image (LE) | `49 49 2A 00` | `.tif` `.tiff` |
+| TIFF image (BE) | `4D 4D 00 2A` | `.tif` `.tiff` |
+| RIFF container | `52 49 46 46` | `.wav` `.avi` `.webp` |
+| PDF document | `25 50 44 46` | `.pdf` |
+| ZIP archive | `50 4B 03 04` | `.zip` `.docx` `.xlsx` `.pptx` `.jar` … |
+| GZIP archive | `1F 8B` | `.gz` `.tgz` |
+| BZIP2 archive | `42 5A 68` | `.bz2` `.tbz2` |
+| XZ archive | `FD 37 7A 58 5A 00` | `.xz` `.txz` |
+| RAR archive | `52 61 72 21 1A 07` | `.rar` |
+| 7-Zip archive | `37 7A BC AF 27 1C` | `.7z` |
+| MP3 audio (ID3) | `49 44 33` | `.mp3` |
+| MP3 audio (sync) | `FF FB` | `.mp3` |
+| MP4/MOV video | `66 74 79 70` | `.mp4` `.m4v` `.m4a` `.mov` `.3gp` |
+| Windows PE executable | `4D 5A` | `.exe` `.dll` `.sys` `.scr` … |
+| ELF executable | `7F 45 4C 46` | *(no extension)* |
+| Mach-O 32-bit | `CE FA ED FE` | *(no extension)* |
+| Mach-O 64-bit | `CF FA ED FE` | *(no extension)* |
+| Mach-O fat / Java class | `CA FE BA BE` | `.class` |
+| Script (shebang) | `23 21` | `.sh` `.py` `.rb` `.pl` … |
 
-```text
-TYPE|EXTENSION|HEX_BYTES
-```
-
-| Field | Meaning |
-|---|---|
-| `TYPE` | Human-readable name of the format |
-| `EXTENSION` | Expected extension, e.g. `.jpg`. **Empty** means no extension is prescribed |
-| `HEX_BYTES` | Space-separated bytes expected at the start of the file |
-
-- Blank lines are ignored.
-- Lines beginning with `#` are ignored.
-
-<details>
-<summary><b>📋 Example rules</b></summary>
-
-<br>
-
-```text
-JPEG|.jpg|FF D8 FF
-PNG|.png|89 50 4E 47 0D 0A 1A 0A
-ELF executable||7F 45 4C 46
-```
-
-</details>
+Extension comparisons are **case-insensitive**. Formats marked *no extension* (ELF, Mach-O) flag any file that carries an extension as a mismatch.
 
 ## 🧪 Tests
 
@@ -128,8 +178,9 @@ ELF executable||7F 45 4C 46
 make test
 ```
 
-> [!TIP]
-> The tests create small temporary byte fixtures. The repository contains no executable samples and no malware.
+The test target creates temporary byte fixtures and removes them on exit. It
+checks single-file analysis, recursive traversal, extension mismatches, and
+unknown file counts.
 
 ## ⚠️ Scope and limitations
 
@@ -140,8 +191,8 @@ make test
 |---|---|
 | Compare signatures against the **start** of each file | Prove that a file is safe |
 | Report extension mismatches | Parse or validate the full file format |
-| Use an extensible rule database | Inspect signatures at nonzero offsets |
-| | Detect every format (the current database is intentionally small) |
+| Recursively scan regular files in a directory | Inspect signatures at nonzero offsets |
+| Identify 20+ common formats out of the box | Detect every known format |
 
 ## 🛡️ Why it matters
 
