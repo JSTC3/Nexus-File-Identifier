@@ -1,6 +1,6 @@
 #!/bin/sh
 # test_scan.sh — integration tests for nexus-fileid
-# Tests V1 (magic-byte detection), V2 (extension mismatch), V3 (dir scan).
+# Covers V1 (magic-byte detection), V2 (extension mismatch), V3 (dir scan).
 set -eu
 
 PASS=0
@@ -25,49 +25,76 @@ trap 'rm -rf "$temporary_directory"' EXIT HUP INT TERM
 # ── Fixture files ─────────────────────────────────────────────────────────
 mkdir -p "$temporary_directory/nested"
 
-# Real JPEG
-printf '\377\330\377' > "$temporary_directory/photo.jpg"
-# PE binary disguised as JPEG
-printf 'MZ'           > "$temporary_directory/suspicious.jpeg"
-# Completely unknown bytes
-printf 'unknown'      > "$temporary_directory/nested/notes.bin"
+printf '\377\330\377' > "$temporary_directory/photo.jpg"    # real JPEG
+printf 'MZ'           > "$temporary_directory/evil.jpeg"    # PE disguised as JPEG
+printf 'unknown'      > "$temporary_directory/nested/notes.bin"  # unknown
 
-# ── V1: single-file detection ─────────────────────────────────────────────
+# ── V1: single-file — always shows the banner header ─────────────────────
 single=$(./nexus-fileid "$temporary_directory/photo.jpg")
-printf '%s\n' "$single" | grep -qF '[OK]'
-check "V1 single file: JPEG recognised as OK" "$?"
 
-# ── V2: single-file mismatch banner ──────────────────────────────────────
-mismatch=$(./nexus-fileid "$temporary_directory/suspicious.jpeg")
+printf '%s\n' "$single" | grep -qF 'NEXUS FILE IDENTIFIER'
+check "V1: banner header present"             "$?"
+
+printf '%s\n' "$single" | grep -qF 'photo.jpg'
+check "V1: filename in report"                "$?"
+
+printf '%s\n' "$single" | grep -qF 'JPEG image'
+check "V1: detected type correct"             "$?"
+
+printf '%s\n' "$single" | grep -qF '[OK]'
+check "V1: OK result line present"            "$?"
+
+# ── V2: extension mismatch banner ────────────────────────────────────────
+mismatch=$(./nexus-fileid "$temporary_directory/evil.jpeg")
 
 printf '%s\n' "$mismatch" | grep -qF 'NEXUS FILE IDENTIFIER'
-check "V2 mismatch: banner header present"    "$?"
+check "V2: banner header present"             "$?"
 
-printf '%s\n' "$mismatch" | grep -qF 'suspicious.jpeg'
-check "V2 mismatch: filename in report"       "$?"
+printf '%s\n' "$mismatch" | grep -qF 'evil.jpeg'
+check "V2: filename in report"                "$?"
 
 printf '%s\n' "$mismatch" | grep -qF 'Windows PE executable'
-check "V2 mismatch: detected type correct"    "$?"
+check "V2: detected type correct"             "$?"
 
-printf '%s\n' "$mismatch" | grep -qF 'Extension mismatch'
-check "V2 mismatch: warning line present"     "$?"
+printf '%s\n' "$mismatch" | grep -qF 'Expected Ext  : .exe'
+check "V2: expected extension shown"          "$?"
+
+printf '%s\n' "$mismatch" | grep -qF '[!] WARNING: Extension mismatch'
+check "V2: WARNING line present"              "$?"
+
+# ── V2: unknown file ─────────────────────────────────────────────────────
+unknown=$(./nexus-fileid "$temporary_directory/nested/notes.bin")
+
+printf '%s\n' "$unknown" | grep -qF 'NEXUS FILE IDENTIFIER'
+check "V2 unknown: banner header present"     "$?"
+
+printf '%s\n' "$unknown" | grep -qF 'Expected Ext  : -'
+check "V2 unknown: expected ext shows dash"   "$?"
+
+printf '%s\n' "$unknown" | grep -qF '[?]'
+check "V2 unknown: [?] result line present"   "$?"
 
 # ── V3: directory scan ────────────────────────────────────────────────────
 scan=$(./nexus-fileid "$temporary_directory")
 
-# photo.jpg — OK line
+printf '%s\n' "$scan" | grep -qF 'photo.jpg'
+check "V3 dir scan: OK file appears"          "$?"
+
 printf '%s\n' "$scan" | grep -qF '[OK]'
-check "V3 dir scan: OK file reported"         "$?"
+check "V3 dir scan: OK result line present"   "$?"
 
-# suspicious.jpeg — mismatch detected somewhere in scan output
-printf '%s\n' "$scan" | grep -qF 'suspicious.jpeg'
-check "V3 dir scan: mismatch file in output"  "$?"
+printf '%s\n' "$scan" | grep -qF 'evil.jpeg'
+check "V3 dir scan: mismatch file appears"    "$?"
 
-# notes.bin — unknown
+printf '%s\n' "$scan" | grep -qF '[!] WARNING: Extension mismatch'
+check "V3 dir scan: mismatch WARNING present" "$?"
+
+printf '%s\n' "$scan" | grep -qF 'notes.bin'
+check "V3 dir scan: unknown file appears"     "$?"
+
 printf '%s\n' "$scan" | grep -qF '[?]'
-check "V3 dir scan: unknown file reported"    "$?"
+check "V3 dir scan: [?] result present"       "$?"
 
-# Summary counters
 printf '%s\n' "$scan" | grep -qF 'Files scanned: 3'
 check "V3 summary: files scanned = 3"         "$?"
 

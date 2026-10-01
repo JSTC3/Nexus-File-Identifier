@@ -6,11 +6,12 @@
 // ---------------------------------------------------------------------------
 // printFileReport
 //
-// Three possible outcomes:
+// Always prints the banner header and the file information block, then
+// branches on the result:
 //
-//   [OK]  filename                      — known type, extension matches
-//   [?]   filename                      — unknown file type
-//   [!]   filename  + full warning box  — known type, extension MISMATCH
+//   [!] WARNING  — known type, extension MISMATCH
+//   [OK]         — known type, extension matches
+//   [?]          — type could not be identified
 // ---------------------------------------------------------------------------
 void printFileReport(std::ostream& out, const FileReport& report)
 {
@@ -18,41 +19,40 @@ void printFileReport(std::ostream& out, const FileReport& report)
     const std::string display =
         std::filesystem::path(report.filename).filename().string();
 
-    // ── Unknown type ────────────────────────────────────────────────────────
-    if (!report.knownType)
-    {
-        out << "[?] " << display << '\n'
-            << "    Type    : " << report.detectedType << '\n'
-            << '\n';
-        return;
-    }
-
-    // ── Known type, extension OK ────────────────────────────────────────────
-    if (report.extensionMatches)
-    {
-        out << "[OK] " << display
-            << "  (" << report.detectedType << ")\n"
-            << '\n';
-        return;
-    }
-
-    // ── Known type, extension MISMATCH ─────────────────────────────────────
     const std::string ext =
         report.extension.empty() ? "(none)" : report.extension;
 
-    const std::string expected =
-        report.expectedExt.empty() ? "(no extension)" : report.expectedExt;
+    // For the expected-extension field:
+    //   known type  → first valid extension, or "(no extension)" for ELF/Mach-O
+    //   unknown     → "-" (no expectation can be stated)
+    const std::string expected = !report.knownType
+        ? "-"
+        : report.expectedExt.empty()
+            ? "(no extension)"
+            : report.expectedExt;
 
+    // ── Header ───────────────────────────────────────────────────────────────
     out << "========================================\n"
-        << "       NEXUS FILE IDENTIFIER\n"
-        << "========================================\n"
-        << '\n'
-        << "File          : " << display << '\n'
+        << "        NEXUS FILE IDENTIFIER\n"
+        << "========================================\n\n";
+
+    // ── File information ─────────────────────────────────────────────────────
+    out << "File          : " << display << '\n'
         << "Extension     : " << ext << '\n'
         << "Detected Type : " << report.detectedType << '\n'
-        << "Expected Ext  : " << expected << '\n'
-        << '\n'
-        << "[!] WARNING: Extension mismatch\n"
-        << "[!] File content does not match extension\n"
-        << '\n';
+        << "Expected Ext  : " << expected << "\n\n";
+
+    // ── Extension mismatch ───────────────────────────────────────────────────
+    if (report.knownType && !report.extensionMatches)
+    {
+        out << "[!] WARNING: Extension mismatch\n"
+            << "[!] File content does not match extension\n\n";
+        return;
+    }
+
+    // ── Known type, extension OK  /  Unknown type ────────────────────────────
+    if (report.knownType)
+        out << "[OK] " << display << " (" << report.detectedType << ")\n\n";
+    else
+        out << "[?] " << display << " — type not identified\n\n";
 }
