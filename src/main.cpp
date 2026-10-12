@@ -28,6 +28,7 @@ int main(int argc, char* argv[])
     std::size_t filesScanned = 0;
     std::size_t mismatches = 0;
     std::size_t unknown = 0;
+    std::size_t errors = 0;
 
     try
     {
@@ -41,8 +42,10 @@ int main(int argc, char* argv[])
             printFileReport(std::cout, report);
             ++filesScanned;
 
-            if (!report.knownType)
+            if (report.status == FileStatus::Unknown)
                 ++unknown;
+            else if (report.status == FileStatus::Error)
+                ++errors;
             else if (!report.extensionMatches)
                 ++mismatches;
         }
@@ -57,6 +60,7 @@ int main(int argc, char* argv[])
               << "Files scanned: " << filesScanned << '\n'
               << "Mismatches:    " << mismatches << '\n'
               << "Unknown:       " << unknown << '\n'
+              << "Errors:        " << errors << '\n'
               << "--------------------------------\n";
 
     return 0;

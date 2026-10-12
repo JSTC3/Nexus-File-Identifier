@@ -4,6 +4,7 @@
 #include "FileReport.hpp"
 #include "FileSignature.hpp"
 
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -17,7 +18,8 @@ public:
 private:
     std::vector<FileSignature> signatures;
 
-    std::vector<unsigned char> readHeader(const std::string& filename);
+    std::optional<std::vector<unsigned char>> readHeader(
+        const std::string& filename);
 
 };
 

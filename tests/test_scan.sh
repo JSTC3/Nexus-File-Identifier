@@ -28,6 +28,7 @@ mkdir -p "$temporary_directory/nested"
 printf '\377\330\377' > "$temporary_directory/photo.jpg"    # real JPEG
 printf 'MZ'           > "$temporary_directory/evil.jpeg"    # PE disguised as JPEG
 printf 'unknown'      > "$temporary_directory/nested/notes.bin"  # unknown
+: > "$temporary_directory/empty.bin"                         # readable, no signature
 
 # ── V1: single-file — always shows the banner header ─────────────────────
 single=$(./nexus-fileid "$temporary_directory/photo.jpg")
@@ -74,6 +75,18 @@ check "V2 unknown: expected ext shows dash"   "$?"
 printf '%s\n' "$unknown" | grep -qF '[?]'
 check "V2 unknown: [?] result line present"   "$?"
 
+# ── V2: empty readable file is unknown, not an error ─────────────────────
+empty=$(./nexus-fileid "$temporary_directory/empty.bin")
+
+printf '%s\n' "$empty" | grep -qF 'UNKNOWN:'
+check "V2 empty: readable file reported UNKNOWN" "$?"
+
+# ── V2: failed open is an error ──────────────────────────────────────────
+error=$(./nexus-fileid "$temporary_directory/missing.bin")
+
+printf '%s\n' "$error" | grep -qF '[ERROR] Unable to read file'
+check "V2 missing: failed open reported ERROR" "$?"
+
 # ── V3: directory scan ────────────────────────────────────────────────────
 scan=$(./nexus-fileid "$temporary_directory")
 
@@ -95,14 +108,17 @@ check "V3 dir scan: unknown file appears"     "$?"
 printf '%s\n' "$scan" | grep -qF '[?]'
 check "V3 dir scan: [?] result present"       "$?"
 
-printf '%s\n' "$scan" | grep -qF 'Files scanned: 3'
-check "V3 summary: files scanned = 3"         "$?"
+printf '%s\n' "$scan" | grep -qF 'Files scanned: 4'
+check "V3 summary: files scanned = 4"         "$?"
 
 printf '%s\n' "$scan" | grep -qF 'Mismatches:    1'
 check "V3 summary: mismatches = 1"            "$?"
 
 printf '%s\n' "$scan" | grep -qF 'Unknown:       1'
 check "V3 summary: unknown = 1"               "$?"
+
+printf '%s\n' "$scan" | grep -qF 'Errors:        0'
+check "V3 summary: errors = 0"                "$?"
 
 # ── Results ───────────────────────────────────────────────────────────────
 printf '\n%d passed, %d failed\n' "$PASS" "$FAIL"

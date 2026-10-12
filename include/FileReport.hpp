@@ -4,6 +4,13 @@
 #include <iosfwd>
 #include <string>
 
+enum class FileStatus
+{
+    Known,
+    Unknown,
+    Error
+};
+
 struct FileReport
 {
     std::string filename;       // full path as given
@@ -11,7 +18,7 @@ struct FileReport
     std::string detectedType;   // human-readable type name
     std::string expectedExt;    // first valid extension for the detected type, or "" if any/none
     bool        extensionMatches;
-    bool        knownType;
+    FileStatus  status;
 };
 
 void printFileReport(std::ostream& output, const FileReport& report);

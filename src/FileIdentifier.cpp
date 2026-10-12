@@ -152,13 +152,13 @@ FileIdentifier::FileIdentifier()
 // ---------------------------------------------------------------------------
 // readHeader — opens the file in binary mode and returns up to 16 bytes
 // ---------------------------------------------------------------------------
-std::vector<unsigned char> FileIdentifier::readHeader(
+std::optional<std::vector<unsigned char>> FileIdentifier::readHeader(
     const std::string& filename)
 {
     std::ifstream file(filename, std::ios::binary);
 
     if (!file)
-        return {};
+        return std::nullopt;
 
     std::vector<unsigned char> header(16);
 
@@ -192,20 +192,21 @@ FileReport FileIdentifier::analyze(const std::string& filename)
     );
 
     // ── 2. Read the magic bytes ──────────────────────────────────────────
-    std::vector<unsigned char> header = readHeader(filename);
+    std::optional<std::vector<unsigned char>> header = readHeader(filename);
 
-    if (header.empty())
-        return {filename, extension, "Unable to read file", "", false, false};
+    if (!header)
+        return {filename, extension, "Unable to read file", "", false,
+                FileStatus::Error};
 
     // ── 3. Walk the signature database ──────────────────────────────────
     for (const FileSignature& sig : signatures)
     {
-        if (header.size() < sig.magicBytes.size())
+        if (header->size() < sig.magicBytes.size())
             continue;
 
         bool match = std::equal(
             sig.magicBytes.begin(), sig.magicBytes.end(),
-            header.begin()
+            header->begin()
         );
 
         if (!match)
@@ -236,9 +237,10 @@ FileReport FileIdentifier::analyze(const std::string& filename)
         }
 
         return {filename, extension, sig.fileType,
-                expectedExt, extensionMatches, true};
+            expectedExt, extensionMatches, FileStatus::Known};
     }
 
     // ── 4. No signature matched ──────────────────────────────────────────
-    return {filename, extension, "Unknown file type", "", false, false};
+    return {filename, extension, "Unknown file type", "", false,
+            FileStatus::Unknown};
 }

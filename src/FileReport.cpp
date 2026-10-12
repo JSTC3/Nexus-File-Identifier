@@ -24,8 +24,8 @@ void printFileReport(std::ostream& out, const FileReport& report)
 
     // For the expected-extension field:
     //   known type  → first valid extension, or "(no extension)" for ELF/Mach-O
-    //   unknown     → "-" (no expectation can be stated)
-    const std::string expected = !report.knownType
+    //   unknown/error → "-" (no expectation can be stated)
+    const std::string expected = report.status != FileStatus::Known
         ? "-"
         : report.expectedExt.empty()
             ? "(no extension)"
@@ -43,7 +43,13 @@ void printFileReport(std::ostream& out, const FileReport& report)
         << "Expected Ext  : " << expected << "\n\n";
 
     // ── Extension mismatch ───────────────────────────────────────────────────
-    if (report.knownType && !report.extensionMatches)
+    if (report.status == FileStatus::Error)
+    {
+        out << "[ERROR] " << report.detectedType << "\n\n";
+        return;
+    }
+
+    if (report.status == FileStatus::Known && !report.extensionMatches)
     {
         out << "[!] WARNING: Extension mismatch\n"
             << "[!] File content does not match extension\n\n";
@@ -51,8 +57,8 @@ void printFileReport(std::ostream& out, const FileReport& report)
     }
 
     // ── Known type, extension OK  /  Unknown type ────────────────────────────
-    if (report.knownType)
+    if (report.status == FileStatus::Known)
         out << "[OK] " << display << " (" << report.detectedType << ")\n\n";
     else
-        out << "[?] " << display << " — type not identified\n\n";
+        out << "[?] UNKNOWN: " << display << " — type not identified\n\n";
 }

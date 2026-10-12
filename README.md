@@ -137,6 +137,7 @@ Expected Ext  : .exe
 Files scanned: 3
 Mismatches:    1
 Unknown:       1
+Errors:        0
 --------------------------------
 ```
 
@@ -179,8 +180,9 @@ make test
 ```
 
 The test target creates temporary byte fixtures and removes them on exit. It
-checks single-file analysis, recursive traversal, extension mismatches, and
-unknown file counts.
+checks single-file analysis, recursive traversal, extension mismatches, unknown
+file counts, and read errors. Readable files without a matching signature count
+as **Unknown**; files that cannot be opened count as **Errors**.
 
 ## ⚠️ Scope and limitations
 
