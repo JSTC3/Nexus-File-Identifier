@@ -167,6 +167,9 @@ std::optional<std::vector<unsigned char>> FileIdentifier::readHeader(
         static_cast<std::streamsize>(header.size())
     );
 
+    if (file.bad())
+        return std::nullopt;
+
     header.resize(static_cast<std::size_t>(file.gcount()));
 
     return header;

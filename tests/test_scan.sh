@@ -114,8 +114,8 @@ check "V3 summary: files scanned = 4"         "$?"
 printf '%s\n' "$scan" | grep -qF 'Mismatches:    1'
 check "V3 summary: mismatches = 1"            "$?"
 
-printf '%s\n' "$scan" | grep -qF 'Unknown:       1'
-check "V3 summary: unknown = 1"               "$?"
+printf '%s\n' "$scan" | grep -qF 'Unknown:       2'
+check "V3 summary: unknown = 2"               "$?"
 
 printf '%s\n' "$scan" | grep -qF 'Errors:        0'
 check "V3 summary: errors = 0"                "$?"
